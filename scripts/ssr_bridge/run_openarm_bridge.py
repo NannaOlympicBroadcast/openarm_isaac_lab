@@ -38,9 +38,17 @@ Example::
 """
 
 import argparse
+import faulthandler
+import signal
 import time
 
 from isaaclab.app import AppLauncher
+
+# Ctrl-Break dumps every thread's Python stack to stderr without killing the
+# process — the only way to see where this is stuck when it's hung in our own
+# code (Kit/physx is a native process py-spy can't introspect on Windows).
+if hasattr(signal, "SIGBREAK"):
+    faulthandler.register(signal.SIGBREAK)
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="OpenArm ⇄ SSR Agent bus bridge.")

@@ -34,14 +34,31 @@ python -m pip install -e source/openarm   # this repo's package, if not already
 
 ## Run
 
-```bash
-# brain machine: SSR auto-starts an embedded bus server, or run a standalone one
-ssr bus serve --host 0.0.0.0 --port 8765
+The script launches Isaac Sim itself (via `AppLauncher`) and enables the camera
+pipeline automatically, so just run it with the Python that has Isaac Lab.
 
-# GPU machine: launch the bridge (cameras are enabled automatically)
+### pip-installed Isaac Lab (Windows / Linux) — no `isaaclab.sh`
+
+```powershell
+# 1) bus server (any machine; can be the same box)
+ssr bus serve --host 127.0.0.1 --port 8765
+
+# 2) the bridge — plain python in the Isaac Lab pip env
+python scripts\ssr_bridge\run_openarm_bridge.py --bus ws://127.0.0.1:8765 --task Isaac-Manip-OpenArm-v0
+#   add --headless to run without a viewer window
+
+# 3) drive a natural-language instruction (needs GEMINI_API_KEY in ~/.ssr/.env)
+ssr arm do "把苹果放到橘子上" --bus-url ws://127.0.0.1:8765
+```
+
+### Source (git) Isaac Lab — via the launcher
+
+```bash
+ssr bus serve --host 0.0.0.0 --port 8765
 ./isaaclab.sh -p scripts/ssr_bridge/run_openarm_bridge.py \
     --bus ws://<brain-host>:8765 --task Isaac-Manip-OpenArm-v0 --headless
-
-# brain machine: drive a natural-language instruction (needs GEMINI_API_KEY)
 ssr arm do "把苹果放到橘子上" --bus-url ws://<brain-host>:8765
 ```
+
+Start order matters: **bus server → bridge → `ssr arm do`**, so the bridge has
+advertised its capabilities before the agent plans.

@@ -66,7 +66,7 @@ from ssr_robotics.isaac_env import IsaacOpenArmEnv  # noqa: E402
 
 
 def main() -> None:
-    env = IsaacOpenArmEnv(task=args_cli.task)
+    env = IsaacOpenArmEnv(task=args_cli.task, num_envs=args_cli.num_envs)
     client = connect_remote(args_cli.bus, source="openarm-env", api_key=args_cli.api_key)
     runner = EnvRunner(client, env).start()
     print(f"[ssr_bridge] connected to {args_cli.bus}; task={args_cli.task}. "

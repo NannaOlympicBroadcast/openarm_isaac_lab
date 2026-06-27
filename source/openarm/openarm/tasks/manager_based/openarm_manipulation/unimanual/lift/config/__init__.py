@@ -50,3 +50,26 @@ gym.register(
     },
     disable_env_checker=True,
 )
+
+##
+# Vision + end-effector manipulation variant for the SSR Agent bridge.
+# IK ee-pose control + binary gripper + TiledCamera + apple & orange objects.
+##
+
+gym.register(
+    id="Isaac-Manip-OpenArm-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.manip_env_cfg:OpenArmManipEnvCfg",
+    },
+    disable_env_checker=True,
+)
+
+gym.register(
+    id="Isaac-Manip-OpenArm-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.manip_env_cfg:OpenArmManipEnvCfg_PLAY",
+    },
+    disable_env_checker=True,
+)

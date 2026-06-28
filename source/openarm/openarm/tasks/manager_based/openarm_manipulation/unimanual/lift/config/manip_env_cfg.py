@@ -33,6 +33,8 @@ Registered as ``Isaac-Manip-OpenArm-v0`` (see ``config/__init__.py``).
 import isaaclab.sim as sim_utils
 from isaaclab.assets import RigidObjectCfg
 from isaaclab.controllers.differential_ik_cfg import DifferentialIKControllerCfg
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import TiledCameraCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.sim.spawners.sensors import PinholeCameraCfg
@@ -91,6 +93,45 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
         self.scene.object = _fruit("Object", [0.5, -0.1, 0.055], (0.85, 0.10, 0.10))
         # orange: a second graspable object.
         self.scene.orange = _fruit("Orange", [0.5, 0.15, 0.055], (0.95, 0.55, 0.10))
+
+        # Neither the fruit spheres nor the gripper fingers have an explicit
+        # physics material — they fall back to PhysX's low-friction default, so a
+        # closed gripper slips off a sphere on lift instead of holding it. Bind a
+        # high-friction material to both sides of the grasp contact (mirrors the
+        # cabinet task's robot_physics_material pattern).
+        self.events.gripper_physics_material = EventTerm(
+            func=mdp.randomize_rigid_body_material,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+                "static_friction_range": (1.0, 1.2),
+                "dynamic_friction_range": (1.0, 1.2),
+                "restitution_range": (0.0, 0.0),
+                "num_buckets": 16,
+            },
+        )
+        self.events.object_physics_material = EventTerm(
+            func=mdp.randomize_rigid_body_material,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("object"),
+                "static_friction_range": (1.0, 1.2),
+                "dynamic_friction_range": (1.0, 1.2),
+                "restitution_range": (0.0, 0.0),
+                "num_buckets": 16,
+            },
+        )
+        self.events.orange_physics_material = EventTerm(
+            func=mdp.randomize_rigid_body_material,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("orange"),
+                "static_friction_range": (1.0, 1.2),
+                "dynamic_friction_range": (1.0, 1.2),
+                "restitution_range": (0.0, 0.0),
+                "num_buckets": 16,
+            },
+        )
 
         # Overhead RGB camera looking down at the table workspace (320x240).
         self.scene.tiled_camera = TiledCameraCfg(

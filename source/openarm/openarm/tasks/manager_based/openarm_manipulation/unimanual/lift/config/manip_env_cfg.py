@@ -133,12 +133,20 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
             },
         )
 
-        # Overhead RGB camera looking down at the table workspace (320x240).
+        # Top-down RGB camera centred over the table workspace (320x240). The
+        # previous pose (0.9, 0, 0.7) with a tilted quaternion was aimed at the
+        # robot end-effector, so the table objects (apple/orange near x≈0.5,
+        # z≈0.055) fell outside the frame and vision could not see them. Place it
+        # directly above the table centre looking straight down: with the OpenGL
+        # convention the camera views along its -Z, so an identity rotation looks
+        # down -Z world. At ~0.95 m above the table the ~60° horizontal FOV covers
+        # roughly x∈[0.0, 1.0], y∈[±0.4] — the whole reachable workspace — and a
+        # straight-down ray also minimizes table-plane back-projection error.
         self.scene.tiled_camera = TiledCameraCfg(
             prim_path="{ENV_REGEX_NS}/tiled_camera",
             offset=TiledCameraCfg.OffsetCfg(
-                pos=(0.9, 0.0, 0.7),
-                rot=(0.61237, 0.35355, 0.35355, 0.61237),
+                pos=(0.5, 0.0, 1.0),
+                rot=(1.0, 0.0, 0.0, 0.0),
                 convention="opengl",
             ),
             data_types=["rgb"],

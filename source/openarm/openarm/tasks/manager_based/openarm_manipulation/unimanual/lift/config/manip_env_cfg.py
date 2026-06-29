@@ -149,7 +149,10 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
                 rot=(1.0, 0.0, 0.0, 0.0),
                 convention="opengl",
             ),
-            data_types=["rgb"],
+            # RGB for object detection + depth so the bridge can back-project a
+            # detected pixel to an exact 3-D position (instead of assuming a table
+            # plane), which stays accurate for objects of differing height.
+            data_types=["rgb", "distance_to_image_plane"],
             spawn=PinholeCameraCfg(
                 focal_length=18.0, focus_distance=400.0,
                 horizontal_aperture=20.955, clipping_range=(0.05, 20.0),

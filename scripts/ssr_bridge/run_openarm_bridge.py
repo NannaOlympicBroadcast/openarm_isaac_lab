@@ -17,11 +17,13 @@
 Launches Isaac Sim, builds the manipulation env (``Isaac-Manip-OpenArm-v0`` — IK
 end-effector control + binary gripper + TiledCamera + apple & orange), connects
 to the SSR Agent bus server and serves ``arm.action.execute`` requests, replying
-with ``arm.grasp.completed`` / ``arm.action.completed`` events (result + scene +
-camera frame). It also advertises the arm's capabilities on
-``arm.capabilities`` so the agent discovers the supported action types/skills at
-runtime. This wakes the SSR agent's bus-handler turns, which verify each step and
-re-plan or advance.
+with ``arm.action.completed`` events (result + scene + camera frame). It also
+advertises the arm's capabilities on ``arm.capabilities`` so the agent discovers
+the supported action types/skills at runtime, and serves the cerebellum's
+``arm.stream.start``/``stop`` by pushing the camera as a live RTSP stream
+(``--stream-url``; needs ``ffmpeg`` + an RTSP server such as mediamtx) for the
+VLX-Flow realtime grasp loop. Completion/result events wake the SSR agent's
+bus-handler turns, which verify each step and re-plan or advance.
 
 Requires ``ssr-agent`` (bus + shared protocol) and ``ssr-robotics`` (env runner)
 installed in the Isaac Lab Python environment.
@@ -32,9 +34,10 @@ Example::
     ssr bus serve --host 0.0.0.0 --port 8765
     # GPU machine (this script):
     ./isaaclab.sh -p scripts/ssr_bridge/run_openarm_bridge.py \
-        --bus ws://<brain-host>:8765 --task Isaac-Manip-OpenArm-v0 --headless
-    # brain machine: drive a natural-language instruction
-    ssr arm do "把苹果放到橘子上" --bus-url ws://<brain-host>:8765
+        --bus ws://<brain-host>:8765 --task Isaac-Manip-OpenArm-v0 --headless \
+        --stream-url rtsp://<media-host>:8554/openarm
+    # brain machine: drive an instruction via the openarm plugin's arm_* tools
+    ssr ask --keep-alive 120 "把苹果放到橘子上"
 """
 
 import argparse
@@ -56,6 +59,11 @@ parser.add_argument("--bus", type=str, required=True, help="ws:// URL of the SSR
 parser.add_argument("--api-key", type=str, default=None, help="bus API key, if required")
 parser.add_argument("--task", type=str, default="Isaac-Manip-OpenArm-v0", help="gym id")
 parser.add_argument("--num_envs", type=int, default=1, help="number of environments")
+parser.add_argument("--stream-url", type=str, default=None,
+                    help="RTSP push URL for the camera stream the cerebellum's "
+                         "VLX-Flow loop pulls (default: SSR_ARM_STREAM_URL)")
+parser.add_argument("--stream-fps", type=float, default=None,
+                    help="camera stream frame rate (default: SSR_ARM_STREAM_FPS or 4)")
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -76,8 +84,10 @@ from ssr_robotics.isaac_env import IsaacOpenArmEnv  # noqa: E402
 def main() -> None:
     env = IsaacOpenArmEnv(task=args_cli.task, num_envs=args_cli.num_envs)
     client = connect_remote(args_cli.bus, source="openarm-env", api_key=args_cli.api_key)
-    runner = EnvRunner(client, env).start()
-    print(f"[ssr_bridge] connected to {args_cli.bus}; task={args_cli.task}. "
+    runner = EnvRunner(client, env, stream_url=args_cli.stream_url,
+                       stream_fps=args_cli.stream_fps).start()
+    print(f"[ssr_bridge] connected to {args_cli.bus}; task={args_cli.task}; "
+          f"stream-url={runner.stream_url or '(unset)'}. "
           "Serving arm.action.execute … (Ctrl-C to stop)")
     try:
         # Isaac Sim's sim/render context is not thread-safe and must only be
@@ -86,9 +96,12 @@ def main() -> None:
         # here, on simulation_app's own thread, is what actually steps the env.
         # When idle, poll simulation_app.update() so the app stays responsive
         # (otherwise Kit's UI/render loop never gets pumped and looks frozen).
+        # stream_tick() also runs here — the camera buffer is only safe to read
+        # on this thread — feeding the RTSP push stream at its configured fps.
         while simulation_app.is_running():
             if not runner.pump(timeout=0.1):
                 simulation_app.update()
+            runner.stream_tick()
     finally:
         runner.stop()
         try:

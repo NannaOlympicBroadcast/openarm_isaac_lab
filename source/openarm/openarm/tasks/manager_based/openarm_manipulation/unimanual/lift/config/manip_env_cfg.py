@@ -98,14 +98,17 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
         # physics material — they fall back to PhysX's low-friction default, so a
         # closed gripper slips off a sphere on lift instead of holding it. Bind a
         # high-friction material to both sides of the grasp contact (mirrors the
-        # cabinet task's robot_physics_material pattern).
+        # cabinet task's robot_physics_material pattern). Friction is rubber-grade
+        # (~2.0): the cerebellum's realtime servo loop translates the arm *while*
+        # holding a smooth sphere, and at the previous ~1.0–1.2 the fruit slid out
+        # of the fingers (and skated on the table) during those moves.
         self.events.gripper_physics_material = EventTerm(
             func=mdp.randomize_rigid_body_material,
             mode="startup",
             params={
                 "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-                "static_friction_range": (1.0, 1.2),
-                "dynamic_friction_range": (1.0, 1.2),
+                "static_friction_range": (2.0, 2.2),
+                "dynamic_friction_range": (1.8, 2.0),
                 "restitution_range": (0.0, 0.0),
                 "num_buckets": 16,
             },
@@ -115,8 +118,8 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
             mode="startup",
             params={
                 "asset_cfg": SceneEntityCfg("object"),
-                "static_friction_range": (1.0, 1.2),
-                "dynamic_friction_range": (1.0, 1.2),
+                "static_friction_range": (2.0, 2.2),
+                "dynamic_friction_range": (1.8, 2.0),
                 "restitution_range": (0.0, 0.0),
                 "num_buckets": 16,
             },
@@ -126,8 +129,8 @@ class OpenArmManipEnvCfg(OpenArmCubeLiftEnvCfg):
             mode="startup",
             params={
                 "asset_cfg": SceneEntityCfg("orange"),
-                "static_friction_range": (1.0, 1.2),
-                "dynamic_friction_range": (1.0, 1.2),
+                "static_friction_range": (2.0, 2.2),
+                "dynamic_friction_range": (1.8, 2.0),
                 "restitution_range": (0.0, 0.0),
                 "num_buckets": 16,
             },
